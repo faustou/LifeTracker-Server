@@ -32,7 +32,7 @@ router.get('/', async (req: RequestConUsuario, res: Response) => {
 })
 
 router.post('/', async (req: RequestConUsuario, res: Response) => {
-  const { actividad_id, fecha_completado, notas } = req.body
+  const { actividad_id, fecha_completado, notas, estado = 'planeado' } = req.body
 
   if (!actividad_id || !fecha_completado) {
     res.status(400).json({ error: 'actividad_id y fecha_completado son requeridos' })
@@ -51,6 +51,7 @@ router.post('/', async (req: RequestConUsuario, res: Response) => {
       usuario_id: req.usuarioId,
       fecha_completado,
       inicio_semana: inicioSemana,
+      estado,
       notas: notas || null,
     })
     .select()
@@ -66,6 +67,27 @@ router.post('/', async (req: RequestConUsuario, res: Response) => {
     return
   }
   res.status(201).json(data)
+})
+
+router.patch('/:id', async (req: RequestConUsuario, res: Response) => {
+  const { id } = req.params
+  const { estado } = req.body
+
+  if (!estado || !['planeado', 'cumplido'].includes(estado)) {
+    res.status(400).json({ error: 'estado debe ser "planeado" o "cumplido"' })
+    return
+  }
+
+  const { data, error } = await supabase
+    .from('completados')
+    .update({ estado })
+    .eq('id', id)
+    .eq('usuario_id', req.usuarioId!)
+    .select()
+    .single()
+
+  if (error) { res.status(500).json({ error: error.message }); return }
+  res.json(data)
 })
 
 router.delete('/:id', async (req: RequestConUsuario, res: Response) => {
